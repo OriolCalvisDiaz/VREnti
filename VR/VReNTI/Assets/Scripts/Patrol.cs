@@ -31,14 +31,22 @@ namespace PathCreation.Examples
         public int m_CurrentWaypointIndex;                     //  Current waypoint where the enemy is going to
 
         public Queue<Vector3> m_controller1 = new Queue<Vector3>();
-        public Vector3 m_controller2;
-        public Vector3 m_controller3;
+        public Queue<Vector3> m_controller2 = new Queue<Vector3>();
+        public Queue<Vector3> m_controller3 = new Queue<Vector3>();
+        public Queue<Vector3> m_controller4 = new Queue<Vector3>();
+
         public int mo_count;
 
         public GameObject Left;
         public GameObject Right;
         public GameObject Head;
-
+        /*
+        public Text t_Left;
+        public Text t_Right;
+        public Text t_Head;
+        public Text t_Player;
+        public Text t_Count;
+        */
         Transform tmp_r;
         Transform tmp_l;
 
@@ -47,19 +55,20 @@ namespace PathCreation.Examples
 
         public float m_WaitTime;                               //  Variable of the wait time that makes the delay
         public float m_TimeToRotate;                           //  Variable of the wait time to rotate when the player is near that makes the delay
-        public bool m_playerInRange;                           //  If the player is in range of vision, state of chasing
-        public bool m_PlayerNear;                              //  If the player is near, state of hearing
-        public bool m_IsPatrol;                                //  If the enemy is patrol, state of patroling
-        public bool m_CaughtPlayer;                            //  if the enemy has caught the player
-        public bool m_detected;
-        public bool m_attack;
-        public bool m_disguide;
+
         public bool reset;
+
+        public int state = 0;
+        public int state_reading = 0;
+
+        Vector3 printLeft;// = Left.transform.localPosition;
+        Vector3 printRight;// = Right.transform.localPosition;
+        Vector3 printHead;// = Head.transform.localEulerAngles;
+        Vector3 printUser;// = m_PlayerPosition;
 
         void Start()
         {
             m_Reset();
-            InvokeRepeating("GetMovement", 2.0f, 0.2f);
 
         }
 
@@ -67,13 +76,7 @@ namespace PathCreation.Examples
         {
             PF.PathStart();
             m_PlayerPosition = Vector3.zero;
-            m_IsPatrol = true;
-            m_CaughtPlayer = false;
-            m_playerInRange = false;
-            m_PlayerNear = false;
-            m_attack = false;
-            m_detected = false;
-            m_disguide = false;
+
             m_WaitTime = startWaitTime;
             m_TimeToRotate = timeToRotate;
             tmp_r = Right.transform;
@@ -81,128 +84,258 @@ namespace PathCreation.Examples
 
             m_CurrentWaypointIndex = 0;
 
+            printLeft = Left.transform.localPosition;
+            printRight = Right.transform.localPosition;
+            printHead = Head.transform.localEulerAngles;
+            printUser = m_PlayerPosition;
+
+            state = 0;
+
+            state_reading = 0;
+
+            StartCoroutine(AnimationPatrol());
+
+            mo_count = 0;
+
+            m_controller1.Clear();
+            m_controller2.Clear();
+            m_controller3.Clear();
+            m_controller4.Clear();
+
+
         }
 
 
         private void Update()
         {
 
-            if (m_IsPatrol || m_PlayerPosition == Vector3.zero || m_disguide)
+            switch (state)
             {
-                if(!m_playerInRange)
+                case 0: //Patrol
                     StartCoroutine(AnimationPatrol());
 
-                Patroling();
-                if (m_PlayerPosition == Vector3.zero || m_PlayerNear || m_playerInRange || !m_disguide)
-                {
+                    Patroling();
+                    EnviromentView();
+
+                    break;
+                case 1: //PlayerInRange
+                    StartCoroutine(AnimationSeeing());
+
+                    GetMovement();
+
+                    break;
+                case 2: //Attack
+
+                        Chasing();
+
+                        m_controller1.Clear();
+                        m_controller2.Clear();
+                        m_controller3.Clear();
+                        m_controller4.Clear();
+                    
+                    break;
+                case 3: //Ignore
+                    state = 0;
+
+                    
+                    break;
+                case 4: //Chase
+
+                        Chasing();
+                    
+                    break;
+                case 5: //Death
+
                     m_Reset();
-                }
-            }
-            if (!m_IsPatrol || m_playerInRange && m_attack)
-            {
-                Chasing();
-            }
-            if(m_playerInRange && !m_attack && !m_disguide)        
-                StartCoroutine(AnimationSeeing());
 
-            if (!m_disguide)
-                EnviromentView();
-
+                    break;
+                default:
+                    break;
+            }
         }
 
         void GetMovement()
         {
-            if (m_playerInRange && !m_attack)
+            if (state_reading == 0 || state_reading == 1)
             {
                 Vector3 LeftPos = Left.transform.localPosition;
                 Vector3 RightPos = Right.transform.localPosition;
                 Vector3 LeftRot = Left.transform.localEulerAngles;
                 Vector3 RightRot = Right.transform.localEulerAngles;
+                Vector3 HeadRot = Head.transform.localEulerAngles;
+                Vector3 User = m_PlayerPosition;
 
                 m_controller1.Enqueue(LeftPos);
-                m_controller1.Enqueue(RightPos);
                 m_controller1.Enqueue(LeftRot);
-                m_controller1.Enqueue(RightRot);
+                m_controller2.Enqueue(RightPos);
+                m_controller2.Enqueue(RightRot);
+                //m_controller3.Enqueue(HeadRot);
+                //m_controller4.Enqueue(User);
 
-                mo_count = 0;
-
-                Vector3 print = new Vector3();
-
-                if (m_controller1.Count >= 10 * 4)
+                if (m_controller1.Count == 20 * 2)
                 {
-
-                    for (int i = 0; i < m_controller1.Count; i++)
+                    state_reading = 1;
+                }
+                else
+                {
+                    for (int i = 0; i < 1000; i++)
                     {
-                        print -= m_controller1.Dequeue();
 
-                        if (print != Vector3.zero)
+                        if (m_controller1.Count > 20 * 2)
                         {
-                            mo_count++;
+                            m_controller1.Dequeue();//Si no borra, no hay suficientes seguir leyendo
                         }
-                    }
+                        if (m_controller2.Count > 20 * 2)
+                        {
+                            m_controller2.Dequeue();//Si no borra, no hay suficientes seguir leyendo
+                        }
 
 
-                    if (mo_count >= 4)
-                    {
-                        m_attack = true;
-                    }
-                    else
-                    {
-                        m_playerInRange = false;
-                        m_IsPatrol = true;
-                        m_disguide = true;
-                        StartCoroutine(DisguideReset());
+                        if (m_controller1.Count == 20 * 2)
+                        {
+                            state_reading = 1;
+                            break;
+                        }
+                        if (m_controller2.Count == 20 * 2)
+                        {
+                            state_reading = 1;
+                            break;
+                        }
+
+                        if (m_controller1.Count < 20 * 2)
+                        {
+                            break;
+                        }
+                        if (m_controller2.Count < 20 * 2)
+                        {
+                            break;
+                        }
 
                     }
                 }
             }
-            else
+
+            if (state_reading == 1)
             {
-                m_controller1.Clear();
+
+                Vector3 t_printLeft = printLeft;
+                Vector3 t_printRight = printRight;
+
+                Vector3 Limite = new Vector3(20f, 20f, 20f);
+
+
+                if (m_controller1.Count >= 20 * 2)
+                {
+                    for (int i = 0; i < m_controller1.Count; i++)
+                    {
+                        Vector3 tmp_I = m_controller1.Dequeue();
+                        printLeft = new Vector3(Mathf.Abs(printLeft.x - tmp_I.x), Mathf.Abs(printLeft.y - tmp_I.y), Mathf.Abs(printLeft.z - tmp_I.z));
+                    }
+                    if (m_controller2.Count >= 20 * 2)
+                    {
+                        for (int i = 0; i < m_controller2.Count; i++)
+                        {
+                            Vector3 tmp_I = m_controller2.Dequeue();
+                            printRight = new Vector3(Mathf.Abs(printRight.x - tmp_I.x), Mathf.Abs(printRight.y - tmp_I.y), Mathf.Abs(printRight.z - tmp_I.z));
+                        }
+
+                    }
+                }
+
+
+                printLeft = new Vector3(Mathf.Clamp(printLeft.x, 0, 100), Mathf.Clamp(printLeft.y, 0, 100), Mathf.Clamp(printLeft.z, 0, 100));
+                printRight = new Vector3(Mathf.Clamp(printRight.x, 0, 100), Mathf.Clamp(printRight.y, 0, 100), Mathf.Clamp(printRight.z, 0, 100));
+
+                if (Mathf.Abs(printLeft.x - t_printLeft.x) >= 1)
+                    mo_count += 2;
+                else
+                    mo_count -= 1;
+
+                if (mo_count < 0)
+                    mo_count = 0;
+
+                if (Mathf.Abs(printLeft.y - t_printLeft.y) >= 1)
+                    mo_count += 2;
+                else
+                    mo_count -= 1;
+
+                if (mo_count < 0)
+                    mo_count = 0;
+
+                if (Mathf.Abs(printLeft.z - t_printLeft.z) >= 1)
+                    mo_count += 2;
+                else
+                    mo_count -= 1;
+
+                if (mo_count < 0)
+                    mo_count = 0;
+
+                if (Mathf.Abs(printRight.x - t_printRight.x) >= 1)
+                    mo_count += 2;
+                else
+                    mo_count -= 1;
+
+                if (mo_count < 0)
+                    mo_count = 0;
+
+                if (Mathf.Abs(printRight.y - t_printRight.y) >= 1)
+                    mo_count += 2;
+                else
+                    mo_count -= 1;
+                
+                if (mo_count < 0)
+                    mo_count = 0;
+
+                if (Mathf.Abs(printRight.z - t_printRight.z) >= 1)
+                    mo_count += 2;
+                else
+                    mo_count -= 1;
+                
+                if (mo_count < 0)
+                    mo_count = 0;
+
+                if (mo_count >= 1)
+                {
+                    state = 2;
+                }
+                else
+                {
+                    state = 0;
+                    //StartCoroutine(DisguideReset());
+                }
             }
+
         }
 
 
         private void Chasing()
         {
-            if (!m_CaughtPlayer && m_attack)
+
+            agent.SetDestination(m_PlayerPosition);
+
+            Move(speedRun);
+
+            StartCoroutine(AnimationChasing());
+
+            agent.destination = m_PlayerPosition;
+
+            if (agent.remainingDistance <= 2.0f)
             {
-                agent.SetDestination(m_PlayerPosition);
-
-                if (m_playerInRange)
-                {
-                    Move(speedRun);
-
-                    StartCoroutine(AnimationChasing());
-
-                    agent.destination = m_PlayerPosition;
-
-                    if (agent.remainingDistance <= 2.0f)
-                    {
-                        StartCoroutine(AnimationAttack());
-                    }
-                }
+                StartCoroutine(AnimationAttack());
             }
+            
+            
         }
 
         private void Patroling()
         {
-            if (m_PlayerNear)
-            {
-                if (m_TimeToRotate <= 0)
-                {
-                    Move(speedWalk);
-                }
-                else
-                {
-                    m_TimeToRotate -= Time.deltaTime;
-                }
-            }
-            else
-            {
-                playerLastPosition = Vector3.zero;
-                PF.PathUpdate();
-            }
+
+            Move(speedWalk);
+            m_TimeToRotate -= Time.deltaTime;
+
+            playerLastPosition = Vector3.zero;
+            PF.PathUpdate();
+            
         }
 
         void Move(float speed)
@@ -218,35 +351,37 @@ namespace PathCreation.Examples
 
         IEnumerator DisguideReset()
         {
-            yield return new WaitForSeconds(2.5f);
-            m_disguide = false;
+            yield return new WaitForSeconds(1.0f);
+            state = 0;
         }
 
         IEnumerator AnimationAttack()
         {
             animator.GetComponent<Animator>().SetInteger("battle", 2);
             animator.GetComponent<Animator>().SetInteger("moving", 2);
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.2f);
+            state = 5;
+            
         }
 
         IEnumerator AnimationChasing()
         {
             animator.GetComponent<Animator>().SetInteger("battle", 1);
             animator.GetComponent<Animator>().SetInteger("moving", 1);
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.2f);
         }
 
         IEnumerator AnimationPatrol()
         {
             animator.GetComponent<Animator>().SetInteger("battle", 0);
             animator.GetComponent<Animator>().SetInteger("moving", 1);
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.2f);
         }
 
         IEnumerator AnimationSeeing()
         {
             animator.GetComponent<Animator>().SetInteger("battle", 7);
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.2f);
         }
 
         IEnumerator Catch()
@@ -266,16 +401,21 @@ namespace PathCreation.Examples
                     if (!Physics.Raycast(transform.position, dirToPlayer, dstToPlayer, obstacleMask))
                     {
 
-                        m_IsPatrol = false;                 //  Change the state to chasing the player
-                        m_playerInRange = true;             //  The player has been seeing by the enemy and then the nemy starts to chasing the player
- 
-                            if (Vector3.Distance(transform.position, player.position) > (viewRadius + 1))
-                                m_playerInRange = false;                //  Change the sate of chasing
-                            else
-                                m_PlayerPosition = player.transform.position;
+                        if (Vector3.Distance(transform.position, player.position) > (viewRadius + 1))
+                        {
+                            state = 3;
+                            break;
+                        }
+                        else
+                        {
+                            m_PlayerPosition = player.transform.position;
+                            state = 1;
+                            break;
+                        }
+                        
                     }
                     else
-                        m_playerInRange = false;
+                        state = 0;
 
                 }
             }
