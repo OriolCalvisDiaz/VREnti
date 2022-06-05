@@ -40,13 +40,7 @@ namespace PathCreation.Examples
         public GameObject Left;
         public GameObject Right;
         public GameObject Head;
-        /*
-        public Text t_Left;
-        public Text t_Right;
-        public Text t_Head;
-        public Text t_Player;
-        public Text t_Count;
-        */
+
         Transform tmp_r;
         Transform tmp_l;
 
@@ -93,8 +87,8 @@ namespace PathCreation.Examples
 
             state_reading = 0;
 
-            StartCoroutine(AnimationPatrol());
-
+            animator.GetComponent<Animator>().SetInteger("battle", 0);
+            animator.GetComponent<Animator>().SetInteger("moving", 1);
             mo_count = 0;
 
             m_controller1.Clear();
@@ -112,14 +106,15 @@ namespace PathCreation.Examples
             switch (state)
             {
                 case 0: //Patrol
-                    StartCoroutine(AnimationPatrol());
+                    animator.GetComponent<Animator>().SetInteger("battle", 0);
+                    animator.GetComponent<Animator>().SetInteger("moving", 1);
 
                     Patroling();
                     EnviromentView();
 
                     break;
                 case 1: //PlayerInRange
-                    StartCoroutine(AnimationSeeing());
+                    animator.GetComponent<Animator>().SetInteger("battle", 7);
 
                     GetMovement();
 
@@ -315,13 +310,16 @@ namespace PathCreation.Examples
 
             Move(speedRun);
 
-            StartCoroutine(AnimationChasing());
+            animator.GetComponent<Animator>().SetInteger("battle", 1);
+            animator.GetComponent<Animator>().SetInteger("moving", 1);
 
             agent.destination = m_PlayerPosition;
 
             if (agent.remainingDistance <= 2.0f)
             {
-                StartCoroutine(AnimationAttack());
+                animator.GetComponent<Animator>().SetInteger("battle", 2);
+                animator.GetComponent<Animator>().SetInteger("moving", 2);
+                state = 5;
             }
             
             
@@ -349,44 +347,9 @@ namespace PathCreation.Examples
             Move(0);
         }
 
-        IEnumerator DisguideReset()
+        void EnviromentView()
         {
-            yield return new WaitForSeconds(1.0f);
-            state = 0;
-        }
-
-        IEnumerator AnimationAttack()
-        {
-            animator.GetComponent<Animator>().SetInteger("battle", 2);
-            animator.GetComponent<Animator>().SetInteger("moving", 2);
-            yield return new WaitForSeconds(0.2f);
-            state = 5;
-            
-        }
-
-        IEnumerator AnimationChasing()
-        {
-            animator.GetComponent<Animator>().SetInteger("battle", 1);
-            animator.GetComponent<Animator>().SetInteger("moving", 1);
-            yield return new WaitForSeconds(0.2f);
-        }
-
-        IEnumerator AnimationPatrol()
-        {
-            animator.GetComponent<Animator>().SetInteger("battle", 0);
-            animator.GetComponent<Animator>().SetInteger("moving", 1);
-            yield return new WaitForSeconds(0.2f);
-        }
-
-        IEnumerator AnimationSeeing()
-        {
-            animator.GetComponent<Animator>().SetInteger("battle", 7);
-            yield return new WaitForSeconds(0.2f);
-        }
-
-        IEnumerator Catch()
-        {
-            Transform player;           
+            Transform player;
 
             Collider[] playerInRange = Physics.OverlapSphere(transform.position, viewRadius, playerMask);   //  Make an overlap sphere around the enemy to detect the playermask in the view radius
 
@@ -412,21 +375,13 @@ namespace PathCreation.Examples
                             state = 1;
                             break;
                         }
-                        
+
                     }
                     else
                         state = 0;
 
                 }
             }
-            yield return new WaitForSeconds(0.5f);
-
-        }
-
-
-        void EnviromentView()
-        {
-            StartCoroutine(Catch());
         }
     }
 }
