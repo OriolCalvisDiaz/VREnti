@@ -53,11 +53,9 @@ public class CanvasUri : MonoBehaviour
             Vector3 User = m_PlayerPosition.position;
 
             m_controller1.Enqueue(LeftPos);
-            m_controller1.Enqueue(LeftRot);
             m_controller2.Enqueue(RightPos);
-            m_controller2.Enqueue(RightRot);
-            m_controller3.Enqueue(HeadRot);
-            m_controller4.Enqueue(User);
+            m_controller3.Enqueue(LeftRot);
+            m_controller4.Enqueue(RightRot);
 
             if (m_controller1.Count == 20 * 2)
             {
@@ -76,7 +74,14 @@ public class CanvasUri : MonoBehaviour
                     {
                         m_controller2.Dequeue();//Si no borra, no hay suficientes seguir leyendo
                     }
-
+                    if (m_controller3.Count > 20 * 2)
+                    {
+                        m_controller3.Dequeue();//Si no borra, no hay suficientes seguir leyendo
+                    }
+                    if (m_controller4.Count > 20 * 2)
+                    {
+                        m_controller4.Dequeue();//Si no borra, no hay suficientes seguir leyendo
+                    }
 
                     if (m_controller1.Count == 20 * 2)
                     {
@@ -84,6 +89,16 @@ public class CanvasUri : MonoBehaviour
                         break;
                     }
                     if (m_controller2.Count == 20 * 2)
+                    {
+                        state_reading = 1;
+                        break;
+                    }
+                    if (m_controller3.Count == 20 * 2)
+                    {
+                        state_reading = 1;
+                        break;
+                    }
+                    if (m_controller4.Count == 20 * 2)
                     {
                         state_reading = 1;
                         break;
@@ -97,6 +112,14 @@ public class CanvasUri : MonoBehaviour
                     {
                         break;
                     }
+                    if (m_controller3.Count < 20 * 2)
+                    {
+                        break;
+                    }
+                    if (m_controller4.Count < 20 * 2)
+                    {
+                        break;
+                    }
 
                 }
             }
@@ -105,91 +128,85 @@ public class CanvasUri : MonoBehaviour
         if (state_reading == 1)
         {
 
-            Vector3 t_printLeft = printLeft;
-            Vector3 t_printRight = printRight;
+            Vector3 t_printLeft = Left.transform.localPosition;
+            Vector3 t_printRight = Right.transform.localPosition;
+            Vector3 t_LeftRot = Left.transform.localEulerAngles;
+            Vector3 t_RightRot = Right.transform.localEulerAngles;
 
             Vector3 Limite = new Vector3(20f, 20f, 20f);
-
 
             if (m_controller1.Count >= 20 * 2)
             {
                 for (int i = 0; i < m_controller1.Count; i++)
                 {
                     Vector3 tmp_I = m_controller1.Dequeue();
-                    printLeft = new Vector3(Mathf.Abs(printLeft.x - tmp_I.x), Mathf.Abs(printLeft.y - tmp_I.y), Mathf.Abs(printLeft.z - tmp_I.z));
+                    bool closeEnough = Mathf.Approximately(t_printLeft.x, tmp_I.x)
+                        && Mathf.Approximately(t_printLeft.y, tmp_I.y)
+                        && Mathf.Approximately(t_printLeft.z, tmp_I.z);
+                    if (!closeEnough)
+                        mo_count++;
+ 
                 }
-                if (m_controller2.Count >= 20 * 2)
+
+            }
+            if (m_controller2.Count >= 20 * 2)
+            {
+                for (int i = 0; i < m_controller2.Count; i++)
                 {
-                    for (int i = 0; i < m_controller2.Count; i++)
-                    {
-                        Vector3 tmp_I = m_controller2.Dequeue();
-                        printRight = new Vector3(Mathf.Abs(printRight.x - tmp_I.x), Mathf.Abs(printRight.y - tmp_I.y), Mathf.Abs(printRight.z - tmp_I.z));
-                    }
+                    Vector3 tmp_I = m_controller2.Dequeue();
+                    bool closeEnough = Mathf.Approximately(t_printRight.x, tmp_I.x)
+                        && Mathf.Approximately(t_printRight.y, tmp_I.y)
+                        && Mathf.Approximately(t_printRight.z, tmp_I.z);
+                    if (!closeEnough)
+                        mo_count++;
+                }
+
+            }
+            if (m_controller3.Count >= 20 * 2)
+            {
+                for (int i = 0; i < m_controller3.Count; i++)
+                {
+                    Vector3 tmp_I = m_controller3.Dequeue();
+                    bool closeEnough = Mathf.Approximately(t_LeftRot.x, tmp_I.x)
+                        && Mathf.Approximately(t_LeftRot.y, tmp_I.y)
+                        && Mathf.Approximately(t_LeftRot.z, tmp_I.z);
+                    if (!closeEnough)
+                        mo_count++;
 
                 }
+
+            }
+            if (m_controller4.Count >= 20 * 2)
+            {
+                for (int i = 0; i < m_controller4.Count; i++)
+                {
+                    Vector3 tmp_I = m_controller4.Dequeue();
+                    bool closeEnough = Mathf.Approximately(t_RightRot.x, tmp_I.x)
+                        && Mathf.Approximately(t_RightRot.y, tmp_I.y)
+                        && Mathf.Approximately(t_RightRot.z, tmp_I.z);
+                    if (!closeEnough)
+                        mo_count++;
+
+                }
+
             }
 
 
-            printLeft = new Vector3(Mathf.Clamp(printLeft.x, 0, 100), Mathf.Clamp(printLeft.y, 0, 100), Mathf.Clamp(printLeft.z, 0, 100));
-            printRight = new Vector3(Mathf.Clamp(printRight.x, 0, 100), Mathf.Clamp(printRight.y, 0, 100), Mathf.Clamp(printRight.z, 0, 100));
-
-
-            if (Mathf.Abs(printLeft.x - t_printLeft.x) >= 1)
-                mo_count += 2;
+            if (mo_count >= 1)
+            {
+                state = 2;
+            }
             else
-                mo_count -= 1;
-
-            if (mo_count < 0)
-                mo_count = 0;
-
-            if (Mathf.Abs(printLeft.y - t_printLeft.y) >= 1)
-                mo_count += 2;
-            else
-                mo_count -= 1;
-
-            if (mo_count < 0)
-                mo_count = 0;
-
-            if (Mathf.Abs(printLeft.z - t_printLeft.z) >= 1)
-                mo_count += 2;
-            else
-                mo_count -= 1;
-
-            if (mo_count < 0)
-                mo_count = 0;
-
-            if (Mathf.Abs(printRight.x - t_printRight.x) >= 1)
-                mo_count += 2;
-            else
-                mo_count -= 1;
-
-            if (mo_count < 0)
-                mo_count = 0;
-
-            if (Mathf.Abs(printRight.y - t_printRight.y) >= 1)
-                mo_count += 2;
-            else
-                mo_count -= 1;
-
-            if (mo_count < 0)
-                mo_count = 0;
-
-            if (Mathf.Abs(printRight.z - t_printRight.z) >= 1)
-                mo_count += 2;
-            else
-                mo_count -= 1;
-
-            if (mo_count < 0)
-                mo_count = 0;
-
-            if (mo_count < 0)
-                mo_count = 0;
+            {
+                state = 0;
+                //StartCoroutine(DisguideReset());
+            }
 
             t_Count.text = mo_count.ToString();
-            t_Left.text = printLeft.x + " | " + printLeft.y + " | " + printLeft.z;
-            t_Right.text = printRight.x + " | " + printRight.y + " | " + printRight.z;
-            t_Head.text = printHead.x + " | " + printHead.y + " | " + printHead.z;
-            t_Player.text = printUser.x + " | " + printUser.y + " | " + printUser.z;
+            t_Left.text = t_printLeft.x + " | " + t_printLeft.y + " | " + t_printLeft.z;
+            t_Right.text = t_printRight.x + " | " + t_printRight.y + " | " + t_printRight.z;
+            t_Head.text = t_LeftRot.x + " | " + t_LeftRot.y + " | " + t_LeftRot.z;
+            t_Player.text = t_RightRot.x + " | " + t_RightRot.y + " | " + t_RightRot.z;
         }
 
     }

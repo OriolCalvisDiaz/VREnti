@@ -16,7 +16,7 @@ namespace PathCreation.Examples
         public float speedRun = 9;                      //  Running speed
 
         //private InputDevice targetDevice;
-
+        public float closeDistance = 5;                 //  Radius of movment sensibility
         public float viewRadius = 30;                   //  Radius of the enemy view
         public float viewAngle = 90;                    //  Angle of the enemy view
         public LayerMask playerMask;                    //  To detect the player with the raycast
@@ -106,7 +106,7 @@ namespace PathCreation.Examples
             switch (state)
             {
                 case 0: //Patrol
-                    animator.GetComponent<Animator>().SetInteger("battle", 0);
+                    animator.GetComponent<Animator>().SetInteger("battle", 0); 
                     animator.GetComponent<Animator>().SetInteger("moving", 1);
 
                     Patroling();
@@ -114,32 +114,46 @@ namespace PathCreation.Examples
 
                     break;
                 case 1: //PlayerInRange
-                    animator.GetComponent<Animator>().SetInteger("battle", 7);
 
                     GetMovement();
+                    Patroling();
 
                     break;
-                case 2: //Attack
+                case 2: //Detected
+                    animator.GetComponent<Animator>().SetInteger("battle", 7);
 
-                        Chasing();
+                    StartCoroutine("Roar");
 
-                        m_controller1.Clear();
-                        m_controller2.Clear();
-                        m_controller3.Clear();
-                        m_controller4.Clear();
-                    
                     break;
-                case 3: //Ignore
-                    state = 0;
+                case 3: //Attack
 
-                    
-                    break;
-                case 4: //Chase
+                    Chasing();
 
-                        Chasing();
-                    
+                    m_controller1.Clear();
+                    m_controller2.Clear();
+                    m_controller3.Clear();
+                    m_controller4.Clear();
+
+
                     break;
-                case 5: //Death
+                case 4: //Ignore
+                    animator.GetComponent<Animator>().SetInteger("battle", 0);
+                    animator.GetComponent<Animator>().SetInteger("moving", 1);
+
+                    i_Patroling();
+                    StartCoroutine("Fade");
+
+                    m_controller1.Clear();
+                    m_controller2.Clear();
+                    m_controller3.Clear();
+                    m_controller4.Clear();
+                    break;
+                case 5: //Chase
+
+                  //  Chasing();
+
+                    break;
+                case 6: //Death
 
                     m_Reset();
 
@@ -149,23 +163,45 @@ namespace PathCreation.Examples
             }
         }
 
+        IEnumerator Roar()
+        {
+            yield return new WaitForSeconds(1.0f);
+            state = 3;
+        }
+
+        IEnumerator Fade()
+        {
+            yield return new WaitForSeconds(1.0f);
+            state = 0;
+        }
+
+        IEnumerator Attacking()
+        {
+            animator.GetComponent<Animator>().SetInteger("battle", 2);
+            animator.GetComponent<Animator>().SetInteger("moving", 2);
+            yield return new WaitForSeconds(1.14f);
+            state = 7;
+        }
+
         void GetMovement()
         {
-            if (state_reading == 0 || state_reading == 1)
-            {
-                Vector3 LeftPos = Left.transform.localPosition;
-                Vector3 RightPos = Right.transform.localPosition;
-                Vector3 LeftRot = Left.transform.localEulerAngles;
-                Vector3 RightRot = Right.transform.localEulerAngles;
+            Vector3 LeftPos = new Vector3(0.0f, 0.0f, 0.0f);
+            Vector3 RightPos = new Vector3(0.0f, 0.0f, 0.0f);
+            Vector3 LeftRot = Left.transform.eulerAngles;
+            Vector3 RightRot = Right.transform.eulerAngles;
+
+            switch (state_reading)
+            { 
+                case 0: 
+
+
                 Vector3 HeadRot = Head.transform.localEulerAngles;
                 Vector3 User = m_PlayerPosition;
 
                 m_controller1.Enqueue(LeftPos);
-                m_controller1.Enqueue(LeftRot);
                 m_controller2.Enqueue(RightPos);
-                m_controller2.Enqueue(RightRot);
-                //m_controller3.Enqueue(HeadRot);
-                //m_controller4.Enqueue(User);
+                m_controller3.Enqueue(LeftRot);
+                m_controller4.Enqueue(RightRot);
 
                 if (m_controller1.Count == 20 * 2)
                 {
@@ -173,7 +209,7 @@ namespace PathCreation.Examples
                 }
                 else
                 {
-                    for (int i = 0; i < 1000; i++)
+                    for (int i = 0; i < 20 * 2; i++)
                     {
 
                         if (m_controller1.Count > 20 * 2)
@@ -184,7 +220,14 @@ namespace PathCreation.Examples
                         {
                             m_controller2.Dequeue();//Si no borra, no hay suficientes seguir leyendo
                         }
-
+                        if (m_controller3.Count > 20 * 2)
+                        {
+                            m_controller3.Dequeue();//Si no borra, no hay suficientes seguir leyendo
+                        }
+                        if (m_controller4.Count > 20 * 2)
+                        {
+                            m_controller4.Dequeue();//Si no borra, no hay suficientes seguir leyendo
+                        }
 
                         if (m_controller1.Count == 20 * 2)
                         {
@@ -192,6 +235,16 @@ namespace PathCreation.Examples
                             break;
                         }
                         if (m_controller2.Count == 20 * 2)
+                        {
+                            state_reading = 1;
+                            break;
+                        }
+                        if (m_controller3.Count == 20 * 2)
+                        {
+                            state_reading = 1;
+                            break;
+                        }
+                        if (m_controller4.Count == 20 * 2)
                         {
                             state_reading = 1;
                             break;
@@ -205,103 +258,69 @@ namespace PathCreation.Examples
                         {
                             break;
                         }
-
-                    }
-                }
-            }
-
-            if (state_reading == 1)
-            {
-
-                Vector3 t_printLeft = printLeft;
-                Vector3 t_printRight = printRight;
-
-                Vector3 Limite = new Vector3(20f, 20f, 20f);
-
-
-                if (m_controller1.Count >= 20 * 2)
-                {
-                    for (int i = 0; i < m_controller1.Count; i++)
-                    {
-                        Vector3 tmp_I = m_controller1.Dequeue();
-                        printLeft = new Vector3(Mathf.Abs(printLeft.x - tmp_I.x), Mathf.Abs(printLeft.y - tmp_I.y), Mathf.Abs(printLeft.z - tmp_I.z));
-                    }
-                    if (m_controller2.Count >= 20 * 2)
-                    {
-                        for (int i = 0; i < m_controller2.Count; i++)
+                        if (m_controller3.Count < 20 * 2)
                         {
-                            Vector3 tmp_I = m_controller2.Dequeue();
-                            printRight = new Vector3(Mathf.Abs(printRight.x - tmp_I.x), Mathf.Abs(printRight.y - tmp_I.y), Mathf.Abs(printRight.z - tmp_I.z));
+                            break;
                         }
-
+                        if (m_controller4.Count < 20 * 2)
+                        {
+                            break;
+                        }
                     }
                 }
 
-
-                printLeft = new Vector3(Mathf.Clamp(printLeft.x, 0, 100), Mathf.Clamp(printLeft.y, 0, 100), Mathf.Clamp(printLeft.z, 0, 100));
-                printRight = new Vector3(Mathf.Clamp(printRight.x, 0, 100), Mathf.Clamp(printRight.y, 0, 100), Mathf.Clamp(printRight.z, 0, 100));
-
-                if (Mathf.Abs(printLeft.x - t_printLeft.x) >= 1)
-                    mo_count += 2;
-                else
-                    mo_count -= 1;
-
-                if (mo_count < 0)
+                break;
+                case 1: //
                     mo_count = 0;
 
-                if (Mathf.Abs(printLeft.y - t_printLeft.y) >= 1)
-                    mo_count += 2;
-                else
-                    mo_count -= 1;
+                   // mo_count = GetCount(m_controller1.Count, m_controller1, LeftPos);
+                   // mo_count += GetCount(m_controller2.Count, m_controller2, RightPos);
+                    mo_count += GetCount(m_controller3.Count, m_controller3, LeftRot);
+                    mo_count += GetCount(m_controller4.Count, m_controller4, RightRot);
 
-                if (mo_count < 0)
-                    mo_count = 0;
+                    if (mo_count >= 1)
+                    {
+                        state = 2;//Detected
+                        state_reading = 2;
+                    }
+                    else
+                    {
+                        state = 4;//Ignore
+                        state_reading = 0;
+                    }
+                break;
+            case 2:
+                    if (state == 1)//PlayerInRange
+                    { 
+                        state = 0;//Patrol
+                        state_reading = 0;
+                    }
 
-                if (Mathf.Abs(printLeft.z - t_printLeft.z) >= 1)
-                    mo_count += 2;
-                else
-                    mo_count -= 1;
-
-                if (mo_count < 0)
-                    mo_count = 0;
-
-                if (Mathf.Abs(printRight.x - t_printRight.x) >= 1)
-                    mo_count += 2;
-                else
-                    mo_count -= 1;
-
-                if (mo_count < 0)
-                    mo_count = 0;
-
-                if (Mathf.Abs(printRight.y - t_printRight.y) >= 1)
-                    mo_count += 2;
-                else
-                    mo_count -= 1;
-                
-                if (mo_count < 0)
-                    mo_count = 0;
-
-                if (Mathf.Abs(printRight.z - t_printRight.z) >= 1)
-                    mo_count += 2;
-                else
-                    mo_count -= 1;
-                
-                if (mo_count < 0)
-                    mo_count = 0;
-
-                if (mo_count >= 1)
-                {
-                    state = 2;
-                }
-                else
-                {
-                    state = 0;
-                    //StartCoroutine(DisguideReset());
-                }
+                    break;
+            default:
+                break;
             }
-
+        
         }
 
+        private int GetCount(int _limit, Queue<Vector3> _q, Vector3 v_tmp)
+        {
+            Vector3 tmp_II = v_tmp.normalized;
+
+            for (int i = 0; i < _limit; i++)
+            {
+                Vector3 tmp_I = _q.Dequeue();
+
+                Vector3 offset = tmp_I.normalized - tmp_II;
+                float sqrLen = offset.sqrMagnitude;
+                if (sqrLen > closeDistance * closeDistance)
+                    mo_count++;
+                tmp_II = tmp_I.normalized;
+            }
+
+            return mo_count;
+
+        }
 
         private void Chasing()
         {
@@ -317,23 +336,35 @@ namespace PathCreation.Examples
 
             if (agent.remainingDistance <= 2.0f)
             {
-                animator.GetComponent<Animator>().SetInteger("battle", 2);
-                animator.GetComponent<Animator>().SetInteger("moving", 2);
-                state = 5;
+                StartCoroutine("Attacking");
             }
-            
-            
+
+
         }
 
-        private void Patroling()
+        private void i_Patroling()
         {
+            playerLastPosition = Vector3.zero;
 
             Move(speedWalk);
             m_TimeToRotate -= Time.deltaTime;
 
-            playerLastPosition = Vector3.zero;
             PF.PathUpdate();
-            
+            PF.PathSpeed(speedWalk);
+
+        }
+
+        private void Patroling()
+        {
+            playerLastPosition = Vector3.zero;
+
+            Move(speedWalk);
+
+            m_TimeToRotate -= Time.deltaTime;
+            PF.PathSpeed(speedWalk);
+
+            PF.PathUpdate();
+
         }
 
         void Move(float speed)
@@ -344,7 +375,7 @@ namespace PathCreation.Examples
 
         void CaughtPlayer()
         {
-            Move(0);
+            //d(0);
         }
 
         void EnviromentView()
@@ -366,19 +397,19 @@ namespace PathCreation.Examples
 
                         if (Vector3.Distance(transform.position, player.position) > (viewRadius + 1))
                         {
-                            state = 3;
+                            state = 4;//Ignore
                             break;
                         }
                         else
                         {
                             m_PlayerPosition = player.transform.position;
-                            state = 1;
+                            state = 1;//PlayerInRange
                             break;
                         }
 
                     }
                     else
-                        state = 0;
+                        state = 0;//Patrol
 
                 }
             }

@@ -297,7 +297,8 @@ MonoBehaviour:
   startWaitTime: 0.01
   timeToRotate: 0.01
   speedWalk: 2
-  speedRun: 6
+  speedRun: 4
+  closeDistance: 0.5
   viewRadius: 10
   viewAngle: 103.83
   playerMask:
